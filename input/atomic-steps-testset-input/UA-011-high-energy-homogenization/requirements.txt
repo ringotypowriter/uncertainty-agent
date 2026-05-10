@@ -1,0 +1,29 @@
+## 评定要求（为保证题目唯一性）
+1. 将观测值的总波动分解为：
+   - 仪器重复性分量：$u_{inst}=s_m/\sqrt{n}$（由给定 $s_m$ 得到）
+   - 位置差异分量：先由 6 次观测的均值标准不确定度 $u_{obs}=s_{obs}/\sqrt{n}$ 得到总散布，再按方差分量扣除得到 $u_{pos}=\sqrt{u_{obs}^2-u_{inst}^2}$（若为负则取 0）
+2. 假设两者独立。
+3. 输出 $\bar c$ 与 $u_c(\bar c)$（其中 $u_c=\sqrt{u_{pos}^2+u_{inst}^2}=u_{obs}$）。
+
+## 不计项（为保证题目唯一性）
+- 不考虑校准曲线、标准品等其他分析环节的不确定度。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-011",
+  "estimate": 100.46667,
+  "unit": "mg/kg",
+  "components": {
+    "u_pos": 0.43101946,
+    "u_inst": 0.32659863
+  },
+  "uc": 0.54078133,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

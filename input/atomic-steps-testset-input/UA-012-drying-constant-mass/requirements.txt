@@ -1,0 +1,29 @@
+## 评定要求（为保证题目唯一性）
+1. $m_d$ 取第 3 次称量值。
+2. 纳入分量（独立）：分辨力、称量重复性、恒重判据引入的残余偏差。
+3. 不考虑冷却吸湿与空气浮力。
+4. 输出 $u_c(m_d)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑冷却吸湿与空气浮力。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-012",
+  "estimate": 12.4814,
+  "unit": "g",
+  "components": {
+    "uB_resolution": 0.000028867513,
+    "u_repeatability": 0.0001,
+    "uB_not_constant_mass": 0.00057735027
+  },
+  "uc": 0.0005866572,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

@@ -1,0 +1,221 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Strict Hierarchical Uncertainty Quantification Registry",
+  "description": "基于 checkpoint 3 的 node_logic 树生成的量化产物，将原始输入依据转化为标准不确定度、合成结果和灵敏度贡献。",
+  "type": "object",
+  "required": ["measurement_model", "quantified_uncertainty_tree"],
+  "properties": {
+    "measurement_model": {
+      "type": "object",
+      "description": "测量模型定义",
+      "required": ["output_symbol", "equation"],
+      "properties": {
+        "output_symbol": { "type": "string" },
+        "equation": { "type": "string" },
+        "calculated_result": {
+          "type": "number",
+          "description": "基于输入量计算出的被测量估计值 (y)"
+        },
+        "output_unit": { "type": "string", "description": "被测量结果单位" }
+      }
+    },
+    "quantified_uncertainty_tree": {
+      "type": "object",
+      "description": "与 checkpoint 3 同构的量化树；保留 LEAF_QUANTIFIED、COMPOSITE_AGGREGATED、GROUPED_VALIDATION 的节点逻辑。",
+      "required": ["root_label", "main_parameters"],
+      "properties": {
+        "root_label": { "type": "string", "description": "被测量符号（鱼头）" },
+        "main_parameters": {
+          "type": "array",
+          "description": "Level 1：测量模型参数或 implicit influence 的量化主分枝",
+          "items": { "$ref": "#/definitions/quantified_node" }
+        }
+      }
+    },
+    "calculation_records": {
+      "type": "array",
+      "description": "量化过程中的 calculate 调用、公式替换、单位换算和中间结果记录",
+      "items": { "$ref": "#/definitions/calculation_record" }
+    }
+  },
+  "definitions": {
+    "quantified_node": {
+      "oneOf": [
+        { "$ref": "#/definitions/leaf_quantified_node" },
+        { "$ref": "#/definitions/composite_aggregated_node" },
+        { "$ref": "#/definitions/grouped_validation_node" }
+      ]
+    },
+    "base_node_fields": {
+      "type": "object",
+      "required": ["label", "node_logic", "quantification"],
+      "properties": {
+        "label": { "type": "string", "description": "来源、参数、步骤或分量名称" },
+        "symbol_link": { "type": "string", "description": "对应测量模型中的符号或 implicit influence 名称" },
+        "category": {
+          "type": "string",
+          "enum": ["Instrument_Effect", "Environmental_Effect", "Reagent_Purity", "Random_Variation", "Chemical_Assumption", "Sampling_Effect", "Model_Effect", "Operator_Effect"]
+        },
+        "data_reference": { "type": "string", "description": "输入产物中的数据出处或依据位置" },
+        "quantification": { "$ref": "#/definitions/quantification_status" }
+      }
+    },
+    "leaf_quantified_node": {
+      "allOf": [
+        { "$ref": "#/definitions/base_node_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "node_logic": { "const": "LEAF_QUANTIFIED" },
+            "node_content": {
+              "type": "object",
+              "description": "末端来源的量化记录；可保留使用过的原始参数摘要。",
+              "properties": {
+                "used_parameters": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/used_parameter" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "composite_aggregated_node": {
+      "allOf": [
+        { "$ref": "#/definitions/base_node_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "node_logic": { "const": "COMPOSITE_AGGREGATED" },
+            "node_content": {
+              "type": "object",
+              "required": ["sub_components"],
+              "properties": {
+                "sub_components": {
+                  "type": "array",
+                  "description": "参与该复合节点合成的不确定度子项",
+                  "items": { "$ref": "#/definitions/quantified_node" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "grouped_validation_node": {
+      "allOf": [
+        { "$ref": "#/definitions/base_node_fields" },
+        {
+          "type": "object",
+          "properties": {
+            "node_logic": { "const": "GROUPED_VALIDATION" },
+            "node_content": {
+              "type": "object",
+              "required": ["descriptive_sub_nodes"],
+              "properties": {
+                "descriptive_sub_nodes": {
+                  "type": "array",
+                  "description": "仅用于说明整体验证数据覆盖的子来源，不参与重复计数",
+                  "items": { "$ref": "#/definitions/quantified_node" }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "quantification_status": {
+      "oneOf": [
+        { "$ref": "#/definitions/quantified_result" },
+        { "$ref": "#/definitions/pending_result" }
+      ]
+    },
+    "quantified_result": {
+      "type": "object",
+      "required": ["status", "standard_uncertainty_u", "unit"],
+      "properties": {
+        "status": { "const": "QUANTIFIED" },
+        "standard_uncertainty_u": {
+          "type": "number",
+          "description": "以标准偏差表示的标准不确定度 u(xi)"
+        },
+        "unit": { "type": "string", "description": "标准不确定度单位；无量纲时写 1" },
+        "relative_standard_uncertainty": {
+          "type": "number",
+          "description": "相对标准不确定度；不适用时省略"
+        },
+        "quantification_summary": {
+          "type": "object",
+          "description": "原始输入如何转化为标准不确定度的摘要",
+          "properties": {
+            "evaluation_method": { "type": "string", "enum": ["Type_A", "Type_B"] },
+            "distribution": { "type": "string", "description": "采用的概率分布" },
+            "divisor": { "type": "number", "description": "转化因子，如 1、√3、√6 或 k" },
+            "operation": { "type": "string", "description": "量化操作说明，如 half_width/divisor、sd/sqrt(n)、RSS" }
+          }
+        },
+        "sensitivity_analysis": {
+          "type": "object",
+          "description": "该节点对输出量的贡献；数据不足时可省略并在 pending 节点说明。",
+          "properties": {
+            "sensitivity_coefficient_c": {
+              "type": "number",
+              "description": "灵敏度系数 c = ∂y/∂xi；若直接以y的单位评估则为1.0"
+            },
+            "uncertainty_contribution_ui_y": {
+              "type": "number",
+              "description": "对输出量y的贡献值：u(y, xi) = c * u(xi)"
+            },
+            "output_unit": { "type": "string", "description": "贡献值单位" }
+          }
+        }
+      }
+    },
+    "pending_result": {
+      "type": "object",
+      "required": ["status", "reason", "missing_inputs"],
+      "properties": {
+        "status": { "const": "PENDING" },
+        "reason": { "type": "string", "description": "无法量化或无法传播的原因" },
+        "missing_inputs": {
+          "type": "array",
+          "description": "缺失的原始输入量、单位、模型参数或转换关系",
+          "items": { "type": "string" }
+        },
+        "available_inputs": {
+          "type": "array",
+          "description": "当前输入产物中已经可用但不足以完成量化的数据",
+          "items": { "$ref": "#/definitions/used_parameter" }
+        }
+      }
+    },
+    "used_parameter": {
+      "type": "object",
+      "required": ["name", "role", "value", "unit"],
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "value": { "type": "number" },
+        "unit": { "type": "string" },
+        "description": { "type": "string" },
+        "source_text": { "type": "string" }
+      }
+    },
+    "calculation_record": {
+      "type": "object",
+      "required": ["target_node", "operation"],
+      "properties": {
+        "target_node": { "type": "string", "description": "对应节点 label" },
+        "operation": { "type": "string", "description": "执行的计算或传播操作" },
+        "input_values": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/used_parameter" }
+        },
+        "result": { "type": "number" },
+        "unit": { "type": "string" },
+        "tool_record": { "type": "string", "description": "calculate 工具返回或手工计算记录摘要" }
+      }
+    }
+  }
+}

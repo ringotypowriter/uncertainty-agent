@@ -1,0 +1,27 @@
+## 评定要求（为保证题目唯一性）
+1. 模型：$f=M_L/M_0$。
+2. 仅考虑 $M_0$ 与 $M_L$ 两个输入量的不确定度，且独立。
+3. 用一阶误差传播求 $u(f)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑示踪测量方法额外系统偏倚（除给定输入不确定度外）。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-018",
+  "estimate": 0.026,
+  "unit": "",
+  "components": {
+    "u_M0": 0.8,
+    "u_ML": 0.2
+  },
+  "uc": 0.0020107869,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

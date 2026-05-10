@@ -1,0 +1,30 @@
+## 评定要求（为保证题目唯一性）
+1. 用两组 3 次称量的均值计算 $\Delta m$。
+2. Type A：酸洗前、后两组称量的均值不确定度（由样本标准偏差与 $n=3$ 计算）。
+3. Type B：仅纳入分辨力（按给定 $d$）；校准误差在差值中视为完全相关抵消，因此不纳入。**不另计 $s_r$**（认为 3 次实测数据的 Type A 已包含称量重复性的随机效应，避免双重计入）。
+4. 假设酸洗过程本身的化学波动可忽略（即质量差仅由称量引入）。
+5. 给出 $u_c(\Delta m)$。
+
+## 不计项（为保证题目唯一性）
+- 酸洗过程本身的化学波动视为可忽略。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-007",
+  "estimate": 0.66,
+  "unit": "mg",
+  "components": {
+    "uA_before_mean": 0.0057735027,
+    "uA_after_mean": 0.0057735027,
+    "uB_resolution_mean_each": 0.0016666667
+  },
+  "uc": 0.0084983659,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

@@ -1,0 +1,28 @@
+## 评定要求（为保证题目唯一性）
+1. $R$ 取 5 次结果均值。
+2. Type A：5 次回收率的均值不确定度。
+3. Type B：加标量相对不确定度 0.8%（作为乘法分量，直接作用于 $R$）。
+4. 假设独立，输出 $\bar R$ 与 $u_c(\bar R)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑仪器测量与校准曲线的不确定度。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-014",
+  "estimate": 0.9724,
+  "unit": "",
+  "components": {
+    "uA_repeat": 0.0029086079,
+    "uB_spike_relative": 0.0077792
+  },
+  "uc": 0.0083051763,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

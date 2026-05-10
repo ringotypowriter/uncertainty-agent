@@ -1,0 +1,27 @@
+## 评定要求（为保证题目唯一性）
+1. 本题将被测量定义为 5 次独立随机子取样子样质量的均值 $\bar m$。
+2. Type A：仅由上述 5 次子样质量数据计算均值标准不确定度 $u(\bar m)=s/\sqrt{n}$。
+3. 不另计称量分辨力/重复性（本题视 5 次实测数据已包含称量随机效应；避免双重计入）。
+4. 输出 $\bar m$ 与 $u_c(\bar m)$（本题 $u_c=u_A$）。
+
+## 不计项（为保证题目唯一性）
+- 不考虑后续均质、缩分等步骤的不确定度。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-010",
+  "estimate": 10,
+  "unit": "g",
+  "components": {
+    "uA_sampling": 0.049497475
+  },
+  "uc": 0.049497475,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

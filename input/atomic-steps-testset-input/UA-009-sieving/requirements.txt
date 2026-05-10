@@ -1,0 +1,28 @@
+## 评定要求（为保证题目唯一性）
+1. 将 $m_{in}$ 与 $m_{ret}$ 的不确定度仅来自分辨力与重复性（不考虑校准误差）。
+2. 通过误差传播求 $u(p)$。
+3. 视各分量独立。
+4. 输出 $p$ 与 $u_c(p)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑筛网堵塞、静电吸附等效应。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-009",
+  "estimate": 4.272,
+  "unit": "%",
+  "components": {
+    "u_m_in": 0.0020207259,
+    "u_m_ret": 0.0020207259
+  },
+  "uc": 0.004045138,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

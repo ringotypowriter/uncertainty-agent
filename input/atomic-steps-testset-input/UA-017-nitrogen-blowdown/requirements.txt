@@ -1,0 +1,31 @@
+## 评定要求（为保证题目唯一性）
+1. 模型主关系：$V_f = R$。允许将允差/分辨力/操作项（$\delta_{tol},\delta_{res},\delta_{op}$）作为零期望的不确定度分量单独纳入来源树，而不强制写入方程。
+2. 三项均独立矩形分布。
+3. 输出 $u_c(V_f)$；扩展不确定度不作为必需评分项，若给出可取 $k=2$ 并应满足 $U=2u_c$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑溶剂密度变化与挥发造成的组分损失。
+
+## 标准答案（唯一，用于测试）
+
+> 说明：标准答案中的 `U` 仅用于模型主动给出扩展不确定度时的数值核对，不计入必需完成项。
+
+```json
+{
+  "id": "UA-017",
+  "estimate": 1,
+  "unit": "mL",
+  "components": {
+    "uB_tolerance": 0.028867513,
+    "uB_resolution": 0.0057735027,
+    "uB_operator": 0.017320508
+  },
+  "uc": 0.034156503,
+  "U": 0.068313005,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

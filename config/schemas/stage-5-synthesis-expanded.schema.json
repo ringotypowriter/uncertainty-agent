@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Uncertainty Synthesis and Expansion Registry",
+  "description": "基于量化分量进行合成标准不确定度与扩展不确定度计算的结构化产物。",
+  "type": "object",
+  "required": ["measurand_specification", "uncertainty_budget", "uncertainty_synthesis"],
+  "properties": {
+    "measurand_specification": {
+      "type": "object",
+      "description": "被测量、测量模型与报告单位的计算上下文",
+      "properties": {
+        "description": { "type": "string" },
+        "equation": { "type": "string" },
+        "output_symbol": { "type": "string" },
+        "output_unit": { "type": "string" },
+        "calculation_basis": { "type": "string", "description": "如：基于干重" }
+      }
+    },
+    "uncertainty_budget": {
+      "type": "array",
+      "description": "用于合成计算的不确定度分量明细",
+      "items": {
+        "type": "object",
+        "required": ["source_label", "standard_uncertainty_ui", "contribution_ui_y"],
+        "properties": {
+          "source_label": { "type": "string", "description": "来源名称（如：天平校准）" },
+          "linked_parameter": { "type": "string", "description": "关联的输入量或影响量" },
+          "value_xi": { "type": "number", "description": "输入参数的估计值" },
+          "standard_uncertainty_ui": { "type": "number", "description": "标准不确定度 u(xi)" },
+          "sensitivity_coefficient_ci": { "type": "number", "description": "灵敏度系数 ∂y/∂xi" },
+          "contribution_ui_y": { "type": "number", "description": "对输出量的贡献值 u(y, xi) = ci * ui" },
+          "relative_contribution_percent": { "type": "number", "description": "贡献率百分比" },
+          "distribution": { "type": "string", "description": "采用的概率分布（矩形、正态等）" },
+          "degrees_of_freedom": { "type": "number", "description": "该分量自由度，如适用" }
+        }
+      }
+    },
+    "uncertainty_synthesis": {
+      "type": "object",
+      "description": "合成与扩展计算结果",
+      "required": ["measured_value_y", "combined_standard_uncertainty_uc", "coverage_factor_k", "expanded_uncertainty_U"],
+      "properties": {
+        "measured_value_y": { "type": "number", "description": "被测量的最佳估计值" },
+        "combined_standard_uncertainty_uc": { "type": "number", "description": "合成标准不确定度 uc(y)" },
+        "relative_combined_standard_uncertainty": { "type": "number", "description": "相对合成标准不确定度" },
+        "effective_degrees_of_freedom": { "type": "number", "description": "有效自由度（如需计算k值时提供）" },
+        "coverage_factor_k": { "type": "number", "default": 2, "description": "包含因子 k" },
+        "expanded_uncertainty_U": { "type": "number", "description": "扩展不确定度 U = k * uc" },
+        "relative_expanded_uncertainty": { "type": "number", "description": "相对扩展不确定度" },
+        "confidence_level": { "type": "string", "default": "approximately 95%", "description": "置信水平" }
+      }
+    },
+    "synthesis_records": {
+      "type": "array",
+      "description": "合成与扩展计算的公式、输入值、中间量、calculate 记录和验算",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": { "type": "string" },
+          "formula": { "type": "string" },
+          "inputs": { "type": "object", "additionalProperties": true },
+          "result": { "type": "object", "additionalProperties": true }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "description": "合成和扩展阶段保留的限制、待定项和影响说明",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+## 评定要求（为保证题目唯一性）
+1. 模型主关系：$V=R$。允许将允差/分辨力/视差项（$\delta_{tol},\delta_{res},\delta_{par}$）作为零期望的不确定度分量单独纳入来源树，而不强制写入方程。
+2. 仅纳入 Type B 分量：允差、分辨力、视差（均矩形，独立）；不引入 Type A 重复性分量（输入仅有单次读数）。
+3. 不考虑温度影响与溶剂挥发。
+4. 给出 $u_c(V)$；扩展不确定度不作为必需评分项，若给出可取 $k=2$ 并应满足 $U=2u_c$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑温度影响与溶剂挥发。
+
+## 标准答案（唯一，用于测试）
+
+> 说明：标准答案中的 `U` 仅用于模型主动给出扩展不确定度时的数值核对，不计入必需完成项。
+
+```json
+{
+  "id": "UA-005",
+  "estimate": 500,
+  "unit": "mL",
+  "components": {
+    "uB_tolerance": 2.8867513,
+    "uB_resolution": 0.28867513,
+    "uB_parallax": 1.1547005
+  },
+  "uc": 3.122499,
+  "U": 6.244998,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

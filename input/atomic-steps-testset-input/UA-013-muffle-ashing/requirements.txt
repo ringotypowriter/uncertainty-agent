@@ -1,0 +1,30 @@
+## 评定要求（为保证题目唯一性）
+1. 用 4 个平行结果的平均值作为 $\bar m_{ash}$。
+2. Type A：平行结果的标准偏差用于均值不确定度。
+3. Type B：分辨力对均值贡献（$d$ 按矩形，等效标准不确定度除以 $\sqrt{n}$），以及挥散损失（矩形；对均值同样除以 $\sqrt{n}$）。
+4. 假设各分量独立。
+5. 输出 $\bar m_{ash}$ 与 $u_c(\bar m_{ash})$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑称样量误差与后续溶解/定容步骤。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-013",
+  "estimate": 48.2,
+  "unit": "mg",
+  "components": {
+    "uA_between_runs": 0.33416563,
+    "uB_resolution_mean": 0.020412415,
+    "uB_volatilization_mean": 0.17320508
+  },
+  "uc": 0.37693943,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

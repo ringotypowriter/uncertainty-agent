@@ -1,0 +1,27 @@
+## 评定要求（为保证题目唯一性）
+1. 本题将“粉碎充分性导致的代表性不确定度”定义为：上述 8 次取样质量的 Type A 不确定度（均值的标准不确定度）。
+2. 不另计称量带来的分辨力/重复性 Type B 分量（认为 8 次实测质量的 Type A 已包含称量随机效应，避免双重计入）。
+3. 不考虑量勺体积允差与样品含水率变化。
+4. 输出 $\bar m$ 及其 $u_c(\bar m)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑量勺体积允差与样品含水率变化。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-008",
+  "estimate": 3.835,
+  "unit": "g",
+  "components": {
+    "uA_sampling": 0.018578021
+  },
+  "uc": 0.018578021,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

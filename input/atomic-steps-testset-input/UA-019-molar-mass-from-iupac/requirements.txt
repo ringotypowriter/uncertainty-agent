@@ -1,0 +1,28 @@
+## 评定要求（为保证题目唯一性）
+1. 模型：$M=A_r(\mathrm{K})+A_r(\mathrm{N})+3A_r(\mathrm{O})$。
+2. 各原子量不确定度均为标准不确定度（$k=1$），正态，彼此独立。
+3. 计算 $M$ 及 $u(M)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑样品纯度、同位素组成变化等因素。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-019",
+  "estimate": 101.1032,
+  "unit": "g/mol",
+  "components": {
+    "uK": 0.0001,
+    "uN": 0.0002,
+    "uO": 0.0003
+  },
+  "uc": 0.00092736185,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

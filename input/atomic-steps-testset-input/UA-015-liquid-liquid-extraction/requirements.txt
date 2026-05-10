@@ -1,0 +1,28 @@
+## 评定要求（为保证题目唯一性）
+1. $R_e$ 取均值。
+2. Type A：由 6 次数据计算均值标准不确定度。
+3. Type B：内标校正因子 1.0%（相对）并入。
+4. 独立，输出 $u_c(\bar R_e)$。
+
+## 不计项（为保证题目唯一性）
+- 不考虑前处理称量与后续仪器测量的不确定度。
+
+## 标准答案（唯一，用于测试）
+
+```json
+{
+  "id": "UA-015",
+  "estimate": 0.89583333,
+  "unit": "",
+  "components": {
+    "uA_repeat": 0.0038593321,
+    "uB_internal_std": 0.0089583333
+  },
+  "uc": 0.0097542904,
+  "tolerance": {
+    "rel": 0.000001,
+    "abs": 1e-12,
+    "note": "Compare numeric fields with max(abs, rel*|expected|). Values rounded to 8 significant digits."
+  }
+}
+```

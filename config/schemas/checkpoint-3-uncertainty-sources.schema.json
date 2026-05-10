@@ -1,0 +1,737 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Strict Hierarchical Uncertainty Source Registry",
+  "description": "基于鱼骨图逻辑的强制层级化不确定度来源描述协议，用 node_logic 区分末端独立量化、子项合成和整体验证数据。",
+  "type": "object",
+  "required": ["measurement_model", "uncertainty_tree"],
+  "properties": {
+    "measurement_model": {
+      "$ref": "#/definitions/model_def"
+    },
+    "uncertainty_tree": {
+      "type": "object",
+      "required": ["root_label", "main_parameters"],
+      "properties": {
+        "root_label": {
+          "type": "string",
+          "description": "被测量符号（鱼头），通常与 measurement_model.output_symbol 一致"
+        },
+        "main_parameters": {
+          "type": "array",
+          "description": "Level 1：测量模型中的显式参数，或 measurement_model.implicit_influences 中的影响量（主分枝）",
+          "items": {
+            "$ref": "#/definitions/uncertainty_node"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "model_def": {
+      "type": "object",
+      "description": "测量模型定义：建立输出量与输入量之间的数学关系",
+      "required": ["output_symbol", "equation", "input_parameters"],
+      "properties": {
+        "output_symbol": {
+          "type": "string",
+          "description": "被测量的符号（如：c_NaOH）"
+        },
+        "equation": {
+          "type": "string",
+          "description": "计算公式字符串（如：(m * P) / (V * M)）"
+        },
+        "input_parameters": {
+          "type": "array",
+          "description": "模型公式中显式出现的参数列表",
+          "items": {
+            "type": "object",
+            "required": ["symbol", "kind"],
+            "properties": {
+              "symbol": {
+                "type": "string",
+                "description": "变量符号"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "Base_Quantity",
+                  "Derived_Quantity",
+                  "Correction_Factor"
+                ],
+                "description": "基础量、导出量或修正因子（符合VIM4分类）"
+              },
+              "description": {
+                "type": "string",
+                "description": "参数的物理含义"
+              }
+            }
+          }
+        },
+        "implicit_influences": {
+          "type": "array",
+          "description": "未出现在公式中但已知影响结果的隐性因素（如：环境温度、提取时间）",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "uncertainty_node": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/leaf_quantified_node"
+        },
+        {
+          "$ref": "#/definitions/composite_aggregated_node"
+        },
+        {
+          "$ref": "#/definitions/grouped_validation_node"
+        }
+      ]
+    },
+    "base_node_fields": {
+      "type": "object",
+      "required": ["label", "node_logic", "node_content"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "来源、参数、步骤或分量名称"
+        },
+        "symbol_link": {
+          "type": "string",
+          "description": "若为主分枝，对应测量模型中的符号或 implicit influence 名称"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Instrument_Effect",
+            "Environmental_Effect",
+            "Reagent_Purity",
+            "Random_Variation",
+            "Chemical_Assumption",
+            "Sampling_Effect",
+            "Model_Effect",
+            "Operator_Effect"
+          ],
+          "description": "节点适用的来源类别；复合节点可省略"
+        },
+        "is_significant": {
+          "type": "boolean",
+          "default": true
+        },
+        "data_reference": {
+          "type": "string",
+          "description": "输入材料事实、实验记录、校准证书或参考依据位置"
+        }
+      }
+    },
+    "leaf_quantified_node": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/base_node_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "node_logic": {
+              "const": "LEAF_QUANTIFIED",
+              "description": "末端来源；其 node_content 记录后续量化所需的原始输入依据"
+            },
+            "node_content": {
+              "$ref": "#/definitions/quantification_source"
+            }
+          }
+        }
+      ]
+    },
+    "composite_aggregated_node": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/base_node_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "node_logic": {
+              "const": "COMPOSITE_AGGREGATED",
+              "description": "由子项合成的节点；node_content.sub_components 参与后续合成"
+            },
+            "node_content": {
+              "type": "object",
+              "required": ["sub_components"],
+              "properties": {
+                "sub_components": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/uncertainty_node"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "grouped_validation_node": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/base_node_fields"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "node_logic": {
+              "const": "GROUPED_VALIDATION",
+              "description": "有子项说明但直接取用整体验证数据的节点；descriptive_sub_nodes 不参与重复计数"
+            },
+            "node_content": {
+              "type": "object",
+              "required": [
+                "group_quantification_source",
+                "descriptive_sub_nodes"
+              ],
+              "properties": {
+                "group_quantification_source": {
+                  "$ref": "#/definitions/quantification_source"
+                },
+                "descriptive_sub_nodes": {
+                  "type": "array",
+                  "description": "仅用于说明整体验证数据覆盖的子来源，不参与重复计数",
+                  "items": {
+                    "$ref": "#/definitions/uncertainty_node"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "quantification_source": {
+      "type": "object",
+      "description": "为后续量化提供的原始输入依据；记录原始数据、策略和出处。",
+      "required": ["quantification_raw_data"],
+      "properties": {
+        "quantification_raw_data": {
+          "type": "object",
+          "description": "measurement_protocol 描述测量频率与统计代表性，statistical_template 按策略记录原始量化数据，influence_mechanism 描述该原始量对应的输入量结构。",
+          "required": [
+            "measurement_protocol",
+            "influence_mechanism"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "measurement_protocol": {
+              "$ref": "#/definitions/measurement_protocol"
+            },
+            "statistical_template": {
+              "oneOf": [
+                {
+                  "$ref": "#/definitions/Strategy_Type_A"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Type_B"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Calibration_Regression"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Collaborative_Study"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Proficiency_Testing"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Theoretical_Modeling"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Degree_of_Belief"
+                },
+                {
+                  "$ref": "#/definitions/Strategy_Empirical_Latitude"
+                }
+              ]
+            },
+            "influence_mechanism": {
+              "$ref": "#/definitions/influence_mechanism"
+            }
+          }
+        },
+        "data_reference": {
+          "type": "string",
+          "description": "原始数据出处（如：校准证书编号、实验记录本ID、参考文献）"
+        }
+      }
+    },
+    "Strategy_Type_A": {
+      "title": "Strategy_Type_A",
+      "type": "object",
+      "description": "A类统计评估记录；观测值是否用于平均值，以及平均值使用的观测次数，由外层 measurement_protocol 表达。\n\n注意：现实测量记录/证书常只给出样本标准偏差 s 与观测次数 n，不一定披露完整 readings。为避免为满足 schema 而捏造原始数据，本模板允许：提供 readings（原始序列）或仅提供 experimental_std_deviation_s（摘要模式）。",
+      "required": ["condition_type"],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": ["readings"]
+        },
+        {
+          "required": ["experimental_std_deviation_s", "dof"]
+        }
+      ],
+      "properties": {
+        "readings": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "number"
+          },
+          "description": "原始观测序列（若未披露，可省略；不要为满足 schema 捏造 readings）。"
+        },
+
+        "condition_type": {
+          "type": "string",
+          "enum": ["Repeatability", "Intermediate", "Reproducibility"],
+          "description": "数据获得的精密度条件。"
+        },
+        "dof": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "自由度；若由 n 次独立观测得到样本标准偏差，通常取 ν=n-1。"
+        },
+        "mean_value": {
+          "type": "number",
+          "description": "原始观测序列的算术平均值；若给出 readings 可核验。"
+        },
+        "experimental_std_deviation_s": {
+          "type": "number",
+          "description": "单次测量的实验标准偏差 s；若给出 readings 可核验（未披露 readings 时不可核验）。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "观测值单位；无量纲时写 1。"
+        },
+        "outliers_excluded": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "被统计检验剔除的异常值数量。"
+        },
+        "pooled_info": {
+          "type": "object",
+          "description": "合并标准差或多组数据的信息。",
+          "properties": {
+            "is_pooled": {
+              "type": "boolean"
+            },
+            "total_dof": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "group_count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "pooled_std_deviation_s": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    "Strategy_Type_B": {
+      "title": "Strategy_Type_B",
+      "type": "object",
+      "description": "B类常规评估记录，适用于证书、规范、分辨力或允许偏差给出的限值。",
+      "required": ["limit_a", "distribution", "divisor", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "limit_a": {
+          "type": "number",
+          "description": "区间半宽度或限值 a。"
+        },
+        "distribution": {
+          "type": "string",
+          "enum": ["Rectangular", "Triangular", "Normal", "Student-t"],
+          "description": "概率分布类型。"
+        },
+        "divisor": {
+          "type": "number",
+          "description": "由限值转化为标准不确定度的因子，如 √3、√6 或 k。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "limit_a 的单位；无量纲时写 1。"
+        },
+        "coverage_factor_k": {
+          "type": "number",
+          "description": "当限值来自扩展不确定度时的包含因子。"
+        },
+        "confidence_level": {
+          "type": "string",
+          "description": "限值或扩展不确定度对应的置信水平。"
+        },
+        "applies_to_value": {
+          "type": "number",
+          "description": "该限值对应的标称值或测量值；用于后续计算相对标准不确定度。"
+        },
+        "applies_to_unit": {
+          "type": "string",
+          "description": "applies_to_value 的单位。"
+        }
+      }
+    },
+    "Strategy_Calibration_Regression": {
+      "title": "Strategy_Calibration_Regression",
+      "type": "object",
+      "description": "线性回归校准评估记录。",
+      "required": ["S", "b1", "n", "p", "x_bar", "Sxx"],
+      "additionalProperties": true,
+      "properties": {
+        "S": {
+          "type": "number",
+          "description": "残差标准差。"
+        },
+        "b1": {
+          "type": "number",
+          "description": "校准曲线斜率。"
+        },
+        "b0": {
+          "type": "number",
+          "description": "校准曲线截距。"
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "校准测量总数。"
+        },
+        "p": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "待测样品重复测定次数。"
+        },
+        "x0": {
+          "type": "number",
+          "description": "由样品平均响应经校准曲线得到的待测样品预测值。"
+        },
+        "y0": {
+          "type": "number",
+          "description": "待测样品平均响应。"
+        },
+        "x_bar": {
+          "type": "number",
+          "description": "校准点 x 值平均值。"
+        },
+        "Sxx": {
+          "type": "number",
+          "description": "校准点 x 值平方和。"
+        },
+        "calibration_range_min": {
+          "type": "number",
+          "description": "校准范围下限。"
+        },
+        "calibration_range_max": {
+          "type": "number",
+          "description": "校准范围上限。"
+        },
+        "x_unit": {
+          "type": "string",
+          "description": "x 值单位。"
+        },
+        "y_unit": {
+          "type": "string",
+          "description": "响应值单位。"
+        }
+      }
+    },
+    "Strategy_Collaborative_Study": {
+      "title": "Strategy_Collaborative_Study",
+      "type": "object",
+      "description": "协作研究数据采纳记录。",
+      "required": ["sR", "is_verified", "unit"],
+      "additionalProperties": true,
+      "properties": {
+        "sR": {
+          "type": "number",
+          "description": "再现性标准差。"
+        },
+        "sr": {
+          "type": "number",
+          "description": "重复性标准差。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "标准差单位。"
+        },
+        "is_verified": {
+          "type": "boolean",
+          "description": "实验室是否已验证自身偏倚和精密度符合该数据。"
+        },
+        "verified_bias": {
+          "type": "number",
+          "description": "已验证的实验室偏倚。"
+        },
+        "verified_precision": {
+          "type": "number",
+          "description": "已验证的实验室精密度指标。"
+        },
+        "source_reference": {
+          "type": "string",
+          "description": "协作研究出版物或标准方法出处。"
+        }
+      }
+    },
+    "Strategy_Proficiency_Testing": {
+      "title": "Strategy_Proficiency_Testing",
+      "type": "object",
+      "description": "能力验证数据评估记录。",
+      "required": ["bias_observed", "u_assigned", "unit"],
+      "additionalProperties": true,
+      "properties": {
+        "assigned_value": {
+          "type": "number",
+          "description": "能力验证指定值。"
+        },
+        "measured_value": {
+          "type": "number",
+          "description": "实验室测得值。"
+        },
+        "bias_observed": {
+          "type": "number",
+          "description": "与指定值的偏差。"
+        },
+        "u_assigned": {
+          "type": "number",
+          "description": "指定值的标准不确定度。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "数值单位。"
+        },
+        "n_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "能力验证轮数。"
+        },
+        "performance_statistic": {
+          "type": "string",
+          "description": "采用的能力验证统计量，如 z、zeta 或 En。"
+        }
+      }
+    },
+    "Strategy_Theoretical_Modeling": {
+      "title": "Strategy_Theoretical_Modeling",
+      "type": "object",
+      "description": "物理、化学或数学模型推导的评估记录。",
+      "required": ["sensitivity_function", "input_uncertainties"],
+      "additionalProperties": true,
+      "properties": {
+        "sensitivity_function": {
+          "type": "string",
+          "description": "偏导数、灵敏度函数或影响模型。"
+        },
+        "model_expression": {
+          "type": "string",
+          "description": "用于描述影响量如何作用于结果的模型表达式。"
+        },
+        "input_uncertainties": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "模型输入量的标准不确定度，键为输入量名称。"
+        },
+        "input_values": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "模型输入量的估计值，键为输入量名称。"
+        },
+        "output_unit": {
+          "type": "string",
+          "description": "模型输出的不确定度单位。"
+        }
+      }
+    },
+    "Strategy_Degree_of_Belief": {
+      "title": "Strategy_Degree_of_Belief",
+      "type": "object",
+      "description": "专业判断或信度评估记录。",
+      "required": ["bounds", "evidence"],
+      "additionalProperties": true,
+      "properties": {
+        "bounds": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 2,
+          "description": "专家判断的上下限。"
+        },
+        "distribution": {
+          "type": "string",
+          "enum": ["Rectangular", "Triangular", "Normal", "Student-t"],
+          "description": "由判断边界对应的概率分布。"
+        },
+        "confidence_level": {
+          "type": "string",
+          "description": "专家判断边界对应的置信水平。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "bounds 的单位。"
+        },
+        "evidence": {
+          "type": "string",
+          "description": "主观评估的证据背景。"
+        }
+      }
+    },
+    "Strategy_Empirical_Latitude": {
+      "title": "Strategy_Empirical_Latitude",
+      "type": "object",
+      "description": "经验方法控制边界评估记录。",
+      "required": ["control_limit", "sensitivity_link", "unit"],
+      "additionalProperties": true,
+      "properties": {
+        "control_limit": {
+          "type": "number",
+          "description": "方法允许的操作偏差或控制边界。"
+        },
+        "control_parameter": {
+          "type": "string",
+          "description": "被控制的操作参数。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "control_limit 的单位。"
+        },
+        "sensitivity_link": {
+          "type": "number",
+          "description": "该偏差对结果的影响变化率。"
+        },
+        "sensitivity_unit": {
+          "type": "string",
+          "description": "sensitivity_link 的单位。"
+        },
+        "operating_range": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "经验方法允许的操作范围。"
+        }
+      }
+    },
+    "measurement_protocol": {
+      "type": "object",
+      "description": "测量频率与统计代表性描述，用于区分观测值是否代表平均值；输入量结构由 influence_mechanism 表达。",
+      "required": ["occurrence", "representation", "mean_count"],
+      "additionalProperties": true,
+      "properties": {
+        "occurrence": {
+          "type": "string",
+          "enum": ["Per_Determination", "Per_Batch", "Once_Fixed"],
+          "description": "来源在测量流程中的发生方式：每次测定、整批共享，或固定一次。"
+        },
+        "representation": {
+          "type": "string",
+          "enum": ["Single_Observation", "Arithmetic_Mean"],
+          "description": "输入值代表单次观测，还是重复观测的算术平均值。"
+        },
+        "mean_count": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "计算平均值时使用的独立观测次数；单次结果填 1，例如 21 次测量均值填 21。"
+        }
+      }
+    },
+    "influence_mechanism": {
+      "type": "object",
+      "description": "输入量集合结构；当集合包含多个不同输入量时，用相关系数结构表达协方差项。",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/single_input_quantity_mechanism"
+        },
+        {
+          "$ref": "#/definitions/multiple_input_quantity_mechanism"
+        }
+      ]
+    },
+    "input_quantity_correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coefficient_between_distinct_inputs"],
+      "properties": {
+        "coefficient_between_distinct_inputs": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1,
+          "description": "同一 input_quantity_set 中不同输入量之间的相关系数 r_ik；不相关时为 0。"
+        }
+      }
+    },
+    "single_input_quantity_mechanism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_quantity_set"],
+      "properties": {
+        "input_quantity_set": {
+          "$ref": "#/definitions/single_input_quantity_set"
+        }
+      }
+    },
+    "multiple_input_quantity_mechanism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_quantity_set", "correlation"],
+      "properties": {
+        "input_quantity_set": {
+          "$ref": "#/definitions/multiple_input_quantity_set"
+        },
+        "correlation": {
+          "$ref": "#/definitions/input_quantity_correlation"
+        }
+      }
+    },
+    "single_input_quantity_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "estimate_each", "unit"],
+      "properties": {
+        "count": {
+          "const": 1,
+          "description": "单个输入量。"
+        },
+        "estimate_each": {
+          "type": "number",
+          "description": "输入量的估计值。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "输入量估计值单位；无量纲时写 1。"
+        }
+      }
+    },
+    "multiple_input_quantity_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "estimate_each", "unit"],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "同类输入量个数；多个同类输入量分别进入父量传播时填实际个数。"
+        },
+        "estimate_each": {
+          "type": "number",
+          "description": "每个同类输入量的估计值。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "每个同类输入量估计值的单位；无量纲时写 1。"
+        }
+      }
+    }
+  }
+}
