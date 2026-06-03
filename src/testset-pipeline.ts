@@ -66,11 +66,8 @@ export function parseTestsetArgs(argv: string[]): TestsetArgs {
   const rerunReview = argv.includes("--rerun-review") || argv.includes("--force-review");
   const review = !(argv.includes("--no-review") || argv.includes("--pipeline-only"));
 
-  // Pipeline has 4 stages: stage-123, stage-4, stage-5, stage-6.
-  // Default to stopping before stage-6; stage-6 is presentation-only and should not affect evaluation.
   const endAtArg = argv.find((a) => a.startsWith("--end-at="))?.slice(9);
-  const withStage6 = argv.includes("--with-stage6") || argv.includes("--stage6");
-  const endAt = endAtArg !== undefined ? Math.max(1, Math.floor(Number(endAtArg))) : (withStage6 ? 4 : 3);
+  const endAt = endAtArg !== undefined ? Math.max(1, Math.floor(Number(endAtArg))) : 4;
   if (endAtArg !== undefined && !Number.isFinite(Number(endAtArg))) throw new Error(`Invalid endAt: ${endAtArg}`);
 
   if (caseId && (fromCaseId || toCaseId)) throw new Error("Use either --case=... or --from/--to, not both");
@@ -172,20 +169,19 @@ async function findLatestRunDir(outputRoot: string, caseId: string): Promise<str
 
 function isContextComplete(ctx: any): boolean {
   return Boolean(
-    ctx?.stage1_measurand &&
-    ctx?.stage2_measurement_model &&
-    ctx?.stage3_uncertainty_sources &&
-    ctx?.stage4_quantification &&
-    ctx?.stage5_synthesis_expanded
+    ctx?.measurand_specification &&
+    ctx?.measurement_model &&
+    ctx?.uncertainty_components &&
+    ctx?.synthesis_and_reporting
   );
 }
 
 function inferCompletedStages(ctx: any): string[] {
   const done: string[] = [];
-  if (ctx?.stage1_measurand && ctx?.stage2_measurement_model && ctx?.stage3_uncertainty_sources) done.push("stage-123");
-  if (ctx?.stage4_quantification) done.push("stage-4");
-  if (ctx?.stage5_synthesis_expanded) done.push("stage-5");
-  if (ctx?.stage6_report_artifacts) done.push("stage-6");
+  if (ctx?.measurand_specification) done.push("measurand-specification");
+  if (ctx?.measurement_model) done.push("measurement-model");
+  if (ctx?.uncertainty_components) done.push("uncertainty-components");
+  if (ctx?.synthesis_and_reporting) done.push("synthesis-and-reporting");
   return done;
 }
 
@@ -238,11 +234,10 @@ async function runRequirementsEvaluation(
   const requirements = await fs.readFile(testCase.requirementsPath, "utf-8");
   const inputMaterial = await fs.readFile(testCase.procedurePath, "utf-8");
   const contextForEval = {
-    stage1_measurand: ctx.stage1_measurand,
-    stage2_measurement_model: ctx.stage2_measurement_model,
-    stage3_uncertainty_sources: ctx.stage3_uncertainty_sources,
-    stage4_quantification: ctx.stage4_quantification,
-    stage5_synthesis_expanded: ctx.stage5_synthesis_expanded,
+    measurand_specification: ctx.measurand_specification,
+    measurement_model: ctx.measurement_model,
+    uncertainty_components: ctx.uncertainty_components,
+    synthesis_and_reporting: ctx.synthesis_and_reporting,
   };
   const contextJson = JSON.stringify(contextForEval, null, 2);
   const prompt = `请对每个 requirements 条件逐项评分并汇报总数和完成数。
@@ -255,7 +250,7 @@ ${requirements}
 
 ${inputMaterial}
 
-## context.json (trimmed to stages 1-5)
+## context.json (trimmed to four-step workflow outputs)
 
 \`\`\`json
 ${contextJson}

@@ -1,113 +1,81 @@
 {
   "stages": [
     {
-      "id": "stage-123",
-      "title": "明确被测量、建立测量模型、识别不确定度来源",
+      "id": "measurand-specification",
+      "title": "明确被测量",
       "paperContext": true,
+      "contextField": "measurand_specification",
+      "schemaPath": "config/schemas/four-phase/01-measurand-and-measurement-information.schema.json",
       "prompt": [
-        "你负责 stage-123 的渐进式 checkpoint 工作。",
-        "按当前 checkpoint 任务完成输出，完成后由 finishWork 推进到下一步。",
-        "每完成一个 checkpoint，提交该 checkpoint 的 JSON 给 finishWork。finishWork 通过校验后返回下一步任务和 JSON Schema。",
-        "所有事实、数值、单位、公式和判断都要记录来源；输入材料没有给出的内容标为待定，不补造。",
-        "标准或方法依据需要检索时使用 search_reference；检索 query 应先把个案表述转换为化学测量/计量学通用术语，避免样品名、物质名、仪器品牌、原文段落号和原始数值。涉及数值处理时使用 calculate。"
+        "本阶段你的任务是根据实验过程描述文件，明确本次不确定度评定的被测量，并形成规范化的被测量描述。",
+        "描述内容应包括：完整表述、量的种类、目标组分或目标性质、样品或对象、结果计算和报告基础、报告单位、方法依据、方法性质。",
+        "应区分被测量、测量结果、样品对象、方法条件和报告单位；如果实验描述中存在多个候选结果，应说明选择当前被测量的依据。",
+        "所有事实、数值、单位、方法依据和判断都应来自输入材料或可追溯依据；输入材料没有给出的内容标为待定，不补造。"
       ],
-      "checkpoints": [
+      "referenceQueries": [
         {
-          "id": "checkpoint-1-measurand",
-          "title": "Checkpoint 1 — 明确被测量",
-          "contextField": "stage1_measurand",
-          "schemaPath": "config/schemas/checkpoint-1-measurand.schema.json",
-          "prompt": [
-            "从输入材料中明确本次不确定度评定的被测量。",
-            "区分被测量、测量结果、样品对象、方法条件和报告单位。",
-            "若输入材料中存在多个候选结果，说明你选择当前被测量的依据。"
-          ],
-          "referenceQueries": [
-            {
-              "id": "measurand-specification-method",
-              "query": "测量不确定度评定中，如何定义和表述被测量、测量对象、报告单位和方法条件？",
-              "mode": "relation",
-              "limit": 10
-            },
-            {
-              "id": "method-dependence-classification",
-              "query": "测量不确定度评定中，如何区分有理方法和经验方法，并在被测量定义中记录方法依赖性？",
-              "mode": "relation",
-              "limit": 10
-            }
-          ]
+          "id": "measurand-specification-method",
+          "query": "测量不确定度评定中，如何定义和表述被测量、测量对象、报告单位和方法条件？",
+          "mode": "relation",
+          "limit": 10
         },
         {
-          "id": "checkpoint-2-measurement-model",
-          "title": "Checkpoint 2 — 建立测量模型",
-          "contextField": "stage2_measurement_model",
-          "schemaPath": "config/schemas/checkpoint-2-measurement-model.schema.json",
-          "prompt": [
-            "基于 checkpoint 1 和输入材料建立测量模型。",
-            "抽取或重建输出量、输入量、函数关系、单位换算、修正项和必要假设。",
-            "能用输入材料中的数值验算模型时，调用 calculate 并记录验算结果；缺少验算信息时说明缺口。"
-          ],
-          "referenceQueries": [
-            {
-              "id": "measurement-model-construction",
-              "query": "测量不确定度评定中，如何建立连接被测量和输入量的测量模型？",
-              "mode": "relation",
-              "limit": 10
-            },
-            {
-              "id": "input-quantity-classification",
-              "query": "测量模型中如何区分输入量、影响量、修正量、单位换算和模型假设？",
-              "mode": "relation",
-              "limit": 10
-            }
-          ]
-        },
-        {
-          "id": "checkpoint-3-uncertainty-sources",
-          "title": "Checkpoint 3 — 识别不确定度来源",
-          "contextField": "stage3_uncertainty_sources",
-          "schemaPath": "config/schemas/checkpoint-3-uncertainty-sources.schema.json",
-          "referenceQueries": [
-            {
-              "id": "uncertainty-source-analysis",
-              "query": "测量不确定度评定中，如何依据测量模型、测量步骤和观测过程识别并因果分解不确定度来源？",
-              "mode": "relation",
-              "limit": 10
-            },
-            {
-              "id": "component-quantification-inputs",
-              "query": "测量不确定度来源识别后，Type A 和 Type B 评定需要记录哪些原始量化数据、概率分布和转换因子？",
-              "mode": "relation",
-              "limit": 10
-            }
-          ],
-          "prompt": [
-            "基于 checkpoint 1、checkpoint 2 和输入材料识别不确定度来源。",
-            "按检索依据，以输入材料中的测量步骤为触发点，逐步独立分析不确定度来源。",
-            "将识别出的来源绑定到测量模型输入量或 implicit_influences。",
-            "相关性记录要求：当同一来源对应多个输入量时，使用 multiple_input_quantity_mechanism 并给出 correlation。",
-            "输出符合 JSON Schema 的来源树。"
-          ]
+          "id": "method-dependence-classification",
+          "query": "测量不确定度评定中，如何区分有理方法和经验方法，并在被测量定义中记录方法依赖性？",
+          "mode": "relation",
+          "limit": 10
         }
-      ],
-      "systemPrompt": "你是测量不确定度评定 SubAgent，负责 stage-123。输入材料为描述化学测量实验的文本；按当前 checkpoint 任务完成输出，finishWork 通过当前 JSON Schema 校验后返回下一步任务。依据范围：输入材料、当前 prompt 中已完成 checkpoint 产物、search_reference 检索依据、calculate 计算结果。每个 checkpoint 完成时调用 finishWork 提交符合当前 JSON Schema 的 JSON。"
+      ]
     },
     {
-      "id": "stage-4",
-      "title": "量化",
-      "inputContextField": "stage3_uncertainty_sources",
+      "id": "measurement-model",
+      "title": "建立测量模型",
       "paperContext": true,
-      "contextField": "stage4_quantification",
-      "schemaPath": "config/schemas/stage-4-quantification.schema.json",
+      "inputContextField": "measurand_specification",
+      "contextField": "measurement_model",
+      "schemaPath": "config/schemas/four-phase/02-measurement-model.schema.json",
       "prompt": [
-        "你负责量化 checkpoint 3 产物中的不确定度来源。",
-        "输入为 checkpoint 3 产物 和 原始输入材料。",
-        "对每个可量化来源，明确输入值、单位、分布或评定方法，再调用 calculate 完成必要计算。",
-        "依据不足的来源写入待定项，不补造数值。",
-        "完成后调用 finishWork 提交 JSON。"
+        "本阶段你的任务是根据实验过程描述文件和上一阶段形成的被测量描述，建立测量模型，并说明测量结果与输入量之间的函数关系。",
+        "描述内容应包括：输出量符号、输出量说明、输出量单位、测量模型公式、直接参与计算的输入量。",
+        "应从实验步骤、计算公式、单位换算、修正项和必要假设中抽取或重建模型；如果输入材料可用于验算模型，应调用 calculate 完成验算并记录结果。",
+        "模型中的每个输入量都应说明其物理或化学含义、单位以及与输出量的关系；依据不足时说明缺口，不补造公式或数值。"
       ],
-      "systemPrompt": "你是测量不确定度量化 SubAgent，负责 stage-4。输入为 checkpoint 3 的不确定度来源产物。依据范围：当前 prompt 提供的输入产物、search_reference 检索依据、calculate 计算结果。完成时调用 finishWork 提交符合 JSON Schema 的 JSON。",
       "referenceQueries": [
+        {
+          "id": "measurement-model-construction",
+          "query": "测量不确定度评定中，如何建立连接被测量和输入量的测量模型？",
+          "mode": "relation",
+          "limit": 10
+        },
+        {
+          "id": "input-quantity-classification",
+          "query": "测量模型中如何区分输入量、影响量、修正量、单位换算和模型假设？",
+          "mode": "relation",
+          "limit": 10
+        }
+      ]
+    },
+    {
+      "id": "uncertainty-components",
+      "title": "识别并量化不确定度来源",
+      "paperContext": true,
+      "inputContextField": "measurement_model",
+      "contextField": "uncertainty_components",
+      "schemaPath": "config/schemas/four-phase/03-uncertainty-sources-and-quantification.schema.json",
+      "prompt": [
+        "本阶段你的任务是根据实验过程描述文件和上一阶段形成的测量模型，识别不确定度来源，并将可用信息转化为标准不确定度分量。",
+        "输出内容应包括：测量模型输出量的符号、单位和公式，纳入合成的不确定度分量清单，以及已识别但未纳入合成的来源及原因。",
+        "每个分量应记录来源名称、关联量、量化方式与依据、分布、除数、标准不确定度及单位；若已完成传播，还应记录灵敏度系数和输出贡献。",
+        "应以测量模型和实验步骤为线索逐项分析来源，避免重复计数；同一来源影响多个输入量时，应记录相关性及其对合成的影响。",
+        "对每个可量化来源，应明确输入值、单位、分布或评定方法，并调用 calculate 完成必要计算；依据不足的来源写入待定项，不补造数值。"
+      ],
+      "referenceQueries": [
+        {
+          "id": "source-identification-method",
+          "query": "测量不确定度评定中，如何依据测量模型、测量步骤和观测过程识别并因果分解不确定度来源？",
+          "mode": "relation",
+          "limit": 10
+        },
         {
           "id": "standard-uncertainty-quantification",
           "query": "测量不确定度评定中，如何将 Type A 和 Type B 信息转换为标准不确定度？",
@@ -123,20 +91,18 @@
       ]
     },
     {
-      "id": "stage-5",
-      "title": "合成与扩展",
-      "inputContextField": "stage4_quantification",
-      "contextField": "stage5_synthesis_expanded",
-      "schemaPath": "config/schemas/stage-5-synthesis-expanded.schema.json",
+      "id": "synthesis-and-reporting",
+      "title": "计算合成与扩展不确定度",
+      "inputContextField": "uncertainty_components",
+      "contextField": "synthesis_and_reporting",
+      "schemaPath": "config/schemas/four-phase/04-synthesis-expansion-and-report.schema.json",
       "prompt": [
-        "你负责基于 stage 4 产物进行合成与扩展。",
-        "输入为 stage 4 产物。",
-        "处理相关性、灵敏系数、贡献率、有效自由度、包含因子和扩展不确定度时，保留计算路径。",
-        "若 stage-3 的 influence_mechanism 或描述中给出输入量相关性，合成时应纳入协方差项，并说明相关性来源与处理方式。",
-        "需要数值计算时调用 calculate。依据不足时记录限制，不补造。",
-        "完成后调用 finishWork 提交 JSON。"
+        "本阶段你的任务是根据上一阶段产生的不确定度分量及其量化描述，完成合成标准不确定度、扩展不确定度计算，并生成面向最终报告的结果表达。",
+        "输出内容应包括：测量结果、不确定度预算表、合成标准不确定度、相对合成标准不确定度、有效自由度、包含因子、扩展不确定度、置信水平，以及带扩展不确定度的结果表达和完整说明文本。",
+        "应依据已确认的分量数据进行合成计算，保留相关性、灵敏系数、贡献率、有效自由度、包含因子和扩展不确定度的计算路径。",
+        "如果分量描述中给出输入量相关性，应在合成时纳入协方差项；对于差值模型中完全相关且方向相反的误差贡献，应按模型关系处理抵消。",
+        "需要数值计算、修约或验算时调用 calculate；依据不足时记录限制和待定项，不补造。"
       ],
-      "systemPrompt": "你是测量不确定度合成与扩展 SubAgent，负责 stage-5。输入为 stage-4 的量化产物。依据范围：当前 prompt 提供的输入产物、search_reference 检索依据、calculate 计算结果。完成时调用 finishWork 提交符合 JSON Schema 的 JSON。",
       "referenceQueries": [
         {
           "id": "uncertainty-combination-method",
@@ -149,24 +115,7 @@
           "query": "测量不确定度评定中，如何确定包含因子、有效自由度、置信水平和扩展不确定度？",
           "mode": "relation",
           "limit": 10
-        }
-      ]
-    },
-    {
-      "id": "stage-6",
-      "title": "报告与生成制品",
-      "inputContextField": "stage5_synthesis_expanded",
-      "contextField": "stage6_report_artifacts",
-      "schemaPath": "config/schemas/stage-6-report-artifacts.schema.json",
-      "prompt": [
-        "你负责基于 stage 5 产物形成报告表达和生成制品内容。",
-        "输入为 stage 5 产物。",
-        "输出应能直接支撑报告、预算表和制品生成；保留单位、修约、包含因子、包含概率和待定项说明。",
-        "需要计算或修约验算时调用 calculate。",
-        "完成后调用 finishWork 提交 JSON。"
-      ],
-      "systemPrompt": "你是测量不确定度报告与制品 SubAgent，负责 stage-6。输入为 stage-5 的合成与扩展产物。依据范围：当前 prompt 提供的输入产物、search_reference 检索依据、calculate 计算结果。完成时调用 finishWork 提交符合 JSON Schema 的 JSON。",
-      "referenceQueries": [
+        },
         {
           "id": "uncertainty-reporting-method",
           "query": "测量不确定度评定中，如何报告测量结果、标准不确定度、扩展不确定度、包含因子和单位？",

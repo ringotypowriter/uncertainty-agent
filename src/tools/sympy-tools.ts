@@ -15,16 +15,8 @@ const execFileAsync = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** Path to the Python engine CLI, relative to the graduate-paper project. */
-const ENGINE_CLI = path.resolve(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "src",
-  "tools",
-  "engine_cli.py",
-);
+/** Path to the Python engine CLI. Works from both src/ and compiled dist/. */
+const ENGINE_CLI = path.resolve(__dirname, "..", "..", "src", "tools", "engine_cli.py");
 
 async function callEngine(
   tool: string,
@@ -100,8 +92,8 @@ export function makeComputeSensitivityTool(): AgentTool {
     description:
       "Compute the sensitivity coefficient c_i = ∂f/∂x_i for a single input variable in the measurement model, " +
       "evaluated at a given point. Returns both absolute and relative sensitivity. " +
-      "Use this in Stage 2 to verify model structure (sensitivities should be physically meaningful) " +
-      "and in Stage 6-7 to assemble the sensitivity vector for propagation. " +
+      "Use this in the measurement-model stage to verify model structure (sensitivities should be physically meaningful) " +
+      "and in synthesis-and-reporting to assemble the sensitivity vector for propagation. " +
       "If measurand_value is provided and the equation's output differs by >1%, " +
       "the sensitivity is auto-scaled to match the declared measurand unit.",
     parameters: Type.Object({
@@ -119,9 +111,9 @@ export function makeComputeSensitivityTool(): AgentTool {
       }),
       measurand_value: Type.Optional(Type.Number({
         description:
-          "The declared measurand value from Stage 1. If the equation evaluates to a different scale " +
+          "The declared measurand value from measurand-specification. If the equation evaluates to a different scale " +
           "(e.g. model outputs a dimensionless fraction but measurand is in percent), the engine auto-scales the sensitivity. " +
-          "Always pass this from Stage 6 when the measurand unit is known.",
+          "Pass this when the measurand unit is known.",
       })),
     }),
     execute: async (_id, params: any) => {
@@ -179,7 +171,7 @@ export function makeStatisticsTool(): AgentTool {
     description:
       "Compute descriptive statistics from a numeric array: n, mean, standard deviation, " +
       "RSD (relative standard deviation), and SE (standard error = A-type standard uncertainty). " +
-      "Use this in Stage 5 for A-type evaluation from repeated measurement data. " +
+      "Use this for A-type evaluation from repeated measurement data. " +
       "DO NOT use this for single values — use evaluate instead.",
     parameters: Type.Object({
       data: Type.String({
@@ -234,7 +226,7 @@ export function makePropagateTool(): AgentTool {
       "Run full GUM uncertainty propagation. Given a measurement equation, evaluation point, " +
       "and component list (each with name, u, type='absolute'|'relative', variable, optional dof), " +
       "computes combined standard uncertainty, component contributions, and effective degrees of freedom. " +
-      "Use this in Stage 6 for local synthesis and Stage 7 for global propagation. " +
+      "Use this in synthesis-and-reporting for uncertainty propagation. " +
       "This is the PRIMARY tool for uncertainty propagation — DO NOT use evaluate to manually propagate. " +
       "If measurand_value is provided and the equation's output differs by >1%, " +
       "all contributions and uc are auto-scaled to match the declared measurand unit.",
@@ -254,9 +246,9 @@ export function makePropagateTool(): AgentTool {
       }),
       measurand_value: Type.Optional(Type.Number({
         description:
-          "The declared measurand value from Stage 1. If the equation evaluates to a different scale " +
+          "The declared measurand value from measurand-specification. If the equation evaluates to a different scale " +
           "(e.g. model outputs a dimensionless fraction but measurand is in percent), the engine auto-scales all contributions and uc. " +
-          "Always pass this from Stage 7 when the measurand value is known.",
+          "Pass this when the measurand value is known.",
       })),
       correlation_strategy: Type.Optional(Type.String({
         description:
@@ -346,7 +338,7 @@ export function makeCoverageFactorTool(): AgentTool {
     description:
       "Convert effective degrees of freedom to the coverage factor k for a given confidence level (default 0.95). " +
       "Uses the t-distribution table. Returns k ≈ 1.96 for infinite dof. " +
-      "Use this in Stage 7 to determine the correct expansion factor instead of assuming k=2.",
+      "Use this in synthesis-and-reporting to determine the correct expansion factor instead of assuming k=2.",
     parameters: Type.Object({
       dof: Type.Number({
         description:
@@ -388,7 +380,64 @@ export function makeCoverageFactorTool(): AgentTool {
   };
 }
 
-// ---- Tool: evaluate (fallback) ----
+// ---- Tool: calculate / evaluate (fallback) ----
+
+async function evaluateExpression(params: any): Promise<AgentToolResult<unknown>> {
+  let variables: Record<string, number> | undefined;
+  if (params.variables) {
+    try {
+      variables = typeof params.variables === "string" ? JSON.parse(params.variables) : params.variables;
+    } catch {
+      return {
+        content: [
+          { type: "text", text: `Invalid JSON for variables: ${params.variables}` },
+        ],
+        details: { error: "invalid_json" },
+      };
+    }
+  }
+  const result: any = await callEngine("evaluate", {
+    expression: params.expression,
+    variables,
+  });
+  if (!result.ok) {
+    return {
+      content: [
+        { type: "text", text: `Evaluation failed: ${result.error}` },
+      ],
+      details: result,
+    };
+  }
+  return {
+    content: [{ type: "text", text: String(result.value) }],
+    details: result,
+  };
+}
+
+export function makeCalculateTool(): AgentTool {
+  return {
+    name: "calculate",
+    label: "Calculate",
+    description:
+      "Evaluate a mathematical expression using the SymPy-backed Python engine. " +
+      "Use this for symbolic/numeric calculation, formula verification, unit conversion arithmetic, and expressions such as standard uncertainty conversions. " +
+      "Supports SymPy syntax including +, -, *, /, **, sqrt, abs, log10, sin, cos, exp. " +
+      "For variables, pass variables as a JSON object string.",
+    parameters: Type.Object({
+      expression: Type.String({
+        description:
+          "Mathematical expression, e.g. '0.08 / sqrt(3)' or 'x**2 + sqrt(y)'.",
+      }),
+      variables: Type.Optional(
+        Type.String({
+          description:
+            "Optional JSON object of variable name → value, e.g. '{\"x\":3,\"y\":16}'.",
+        }),
+      ),
+    }),
+    execute: async (_id, params: any) => evaluateExpression(params),
+  };
+}
 
 export function makeEvaluateTool(): AgentTool {
   return {
@@ -418,36 +467,6 @@ export function makeEvaluateTool(): AgentTool {
         }),
       ),
     }),
-    execute: async (_id, params: any) => {
-      let variables: Record<string, number> | undefined;
-      if (params.variables) {
-        try {
-          variables = JSON.parse(params.variables);
-        } catch {
-          return {
-            content: [
-              { type: "text", text: `Invalid JSON for variables: ${params.variables}` },
-            ],
-            details: { error: "invalid_json" },
-          };
-        }
-      }
-      const result: any = await callEngine("evaluate", {
-        expression: params.expression,
-        variables,
-      });
-      if (!result.ok) {
-        return {
-          content: [
-            { type: "text", text: `Evaluation failed: ${result.error}` },
-          ],
-          details: result,
-        };
-      }
-      return {
-        content: [{ type: "text", text: String(result.value) }],
-        details: result,
-      };
-    },
+    execute: async (_id, params: any) => evaluateExpression(params),
   };
 }

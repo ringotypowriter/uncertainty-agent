@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Measurement Model Establishment",
+  "description": "在测量信息基础上建立测量模型，明确测量结果与各输入量之间的关系。",
+  "type": "object",
+  "required": [
+    "output_symbol",
+    "equation",
+    "input_quantities"
+  ],
+  "properties": {
+    "output_symbol": {
+      "type": "string",
+      "description": "测量结果或被测量的符号。"
+    },
+    "output_description": {
+      "type": "string",
+      "description": "输出量的含义，应与被测量一致。"
+    },
+    "output_unit": {
+      "type": "string",
+      "description": "输出量单位。"
+    },
+    "equation": {
+      "type": "string",
+      "description": "测量模型公式。"
+    },
+    "input_quantities": {
+      "type": "array",
+      "description": "公式中直接参与计算的输入量。",
+      "items": {
+        "type": "object",
+        "required": [
+          "symbol",
+          "description"
+        ],
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "description": "输入量符号。"
+          },
+          "description": {
+            "type": "string",
+            "description": "输入量物理含义。"
+          },
+          "value": {
+            "type": "number",
+            "description": "输入量估计值。"
+          },
+          "unit": {
+            "type": "string",
+            "description": "输入量单位；无量纲时写 1。"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "measured_input",
+              "constant",
+              "correction_factor",
+              "calculated_input"
+            ],
+            "description": "输入量在模型中的作用。"
+          }
+        }
+      }
+    },
+    "implicit_influences": {
+      "type": "array",
+      "description": "不直接出现在公式中但可能影响结果的不确定度来源入口。",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "影响量名称。"
+          },
+          "linked_quantity": {
+            "type": "string",
+            "description": "受其影响的输入量或输出量符号。"
+          },
+          "description": {
+            "type": "string",
+            "description": "影响机制说明。"
+          }
+        }
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "description": "模型成立所依赖、且会影响后续不确定度识别的假设。",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

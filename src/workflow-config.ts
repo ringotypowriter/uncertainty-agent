@@ -28,10 +28,9 @@ export interface WorkflowStage {
   paperContext?: boolean;
   /** Inject exactly one prior work product into the first user prompt. */
   inputContextField?: string;
-  schemaPath?: string;
-  contextField?: string;
+  schemaPath: string;
+  contextField: string;
   referenceQueries?: WorkflowReferenceQuery[];
-  checkpoints?: WorkflowWorkItem[];
   prompt: string;
 }
 
@@ -39,6 +38,18 @@ export interface WorkflowConfig {
   path: string;
   stages: WorkflowStage[];
 }
+
+const STAGE_FIELDS = new Set([
+  "id",
+  "title",
+  "systemPrompt",
+  "paperContext",
+  "inputContextField",
+  "schemaPath",
+  "contextField",
+  "referenceQueries",
+  "prompt",
+]);
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -106,18 +117,6 @@ function parseReferenceQueries(value: unknown, label: string): WorkflowReference
   return parsed;
 }
 
-function parseWorkItem(item: unknown, label: string): WorkflowWorkItem {
-  const obj = asRecord(item, label);
-  return {
-    id: requireString(obj, "id", label),
-    title: requireString(obj, "title", label),
-    contextField: requireString(obj, "contextField", label),
-    schemaPath: requireString(obj, "schemaPath", label),
-    prompt: parsePrompt(obj.prompt, label),
-    referenceQueries: parseReferenceQueries(obj.referenceQueries, `${label}.referenceQueries`),
-  };
-}
-
 export async function loadWorkflowConfig(
   workDir: string,
   configPath = DEFAULT_WORKFLOW_CONFIG_PATH,
@@ -126,58 +125,42 @@ export async function loadWorkflowConfig(
   const raw = await fs.readFile(absPath, "utf-8");
   const root = asRecord(JSON.parse(raw), "workflow config");
   const rawStages = root.stages;
-  if (!Array.isArray(rawStages) || rawStages.length === 0) {
-    throw new Error("workflow config stages must be a non-empty array");
+  if (!Array.isArray(rawStages) || rawStages.length !== 4) {
+    throw new Error("workflow config stages must contain exactly four stages");
   }
 
   const stages = rawStages.map((item, index): WorkflowStage => {
     const label = `stages[${index}]`;
     const obj = asRecord(item, label);
-    const rawCheckpoints = obj.checkpoints;
-    const checkpoints = rawCheckpoints === undefined
-      ? undefined
-      : (() => {
-          if (!Array.isArray(rawCheckpoints) || rawCheckpoints.length === 0) {
-            throw new Error(`${label}.checkpoints must be a non-empty array when provided`);
-          }
-          const parsed = rawCheckpoints.map((checkpoint, checkpointIndex) => parseWorkItem(checkpoint, `${label}.checkpoints[${checkpointIndex}]`));
-          validateUnique(parsed.map((checkpoint) => checkpoint.id), `${label}.checkpoints[].id`);
-          validateUnique(parsed.map((checkpoint) => checkpoint.contextField), `${label}.checkpoints[].contextField`);
-          return parsed;
-        })();
-
-    const stage: WorkflowStage = {
+    const unsupported = Object.keys(obj).filter((field) => !STAGE_FIELDS.has(field));
+    if (unsupported.length > 0) {
+      throw new Error(`${label} has unsupported fields: ${unsupported.join(", ")}`);
+    }
+    return {
       id: requireString(obj, "id", label),
       title: requireString(obj, "title", label),
       systemPrompt: optionalString(obj, "systemPrompt", label),
       paperContext: obj.paperContext === true,
       inputContextField: optionalString(obj, "inputContextField", label),
+      contextField: requireString(obj, "contextField", label),
+      schemaPath: requireString(obj, "schemaPath", label),
       prompt: parsePrompt(obj.prompt, label),
       referenceQueries: parseReferenceQueries(obj.referenceQueries, `${label}.referenceQueries`),
-      checkpoints,
     };
-
-    if (!checkpoints) {
-      stage.contextField = requireString(obj, "contextField", label);
-      stage.schemaPath = requireString(obj, "schemaPath", label);
-    }
-
-    return stage;
   });
 
   validateUnique(stages.map((stage) => stage.id), "stages[].id");
-  validateUnique(stages.flatMap((stage) => getStageWorkItems(stage).map((item) => item.contextField)), "context fields");
+  validateUnique(stages.map((stage) => stage.contextField), "context fields");
 
   return { path: absPath, stages };
 }
 
 export function getStageWorkItems(stage: WorkflowStage): WorkflowWorkItem[] {
-  if (stage.checkpoints?.length) return stage.checkpoints;
   return [{
     id: stage.id,
     title: stage.title,
-    contextField: stage.contextField!,
-    schemaPath: stage.schemaPath!,
+    contextField: stage.contextField,
+    schemaPath: stage.schemaPath,
     prompt: stage.prompt,
     referenceQueries: stage.referenceQueries,
   }];
@@ -188,7 +171,7 @@ export function getStageOrder(workflow: WorkflowConfig): string[] {
 }
 
 export function getStageContextFields(stage: WorkflowStage): string[] {
-  return getStageWorkItems(stage).map((item) => item.contextField);
+  return [stage.contextField];
 }
 
 export function getWorkflowContextFields(workflow: WorkflowConfig): string[] {
@@ -196,10 +179,7 @@ export function getWorkflowContextFields(workflow: WorkflowConfig): string[] {
 }
 
 export function getOutputFields(workflow: WorkflowConfig): Record<string, string> {
-  return Object.fromEntries(workflow.stages.map((stage) => {
-    const fields = getStageContextFields(stage);
-    return [stage.id, fields[fields.length - 1]];
-  }));
+  return Object.fromEntries(workflow.stages.map((stage) => [stage.id, stage.contextField]));
 }
 
 export function getStageById(workflow: WorkflowConfig, stageId: string): WorkflowStage | undefined {
@@ -216,12 +196,8 @@ export function getStageNumber(workflow: WorkflowConfig, stageId: string): numbe
 }
 
 export function findFirstIncompleteWorkItemIndex(stage: WorkflowStage, context: Record<string, unknown>): number {
-  const workItems = getStageWorkItems(stage);
-  const index = workItems.findIndex((item) => {
-    const value = context[item.contextField];
-    return value === undefined || value === null || (Array.isArray(value) && value.length === 0);
-  });
-  return index === -1 ? workItems.length : index;
+  const value = context[stage.contextField];
+  return value === undefined || value === null || (Array.isArray(value) && value.length === 0) ? 0 : 1;
 }
 
 export function formatWorkItemPrompt(workItem: WorkflowWorkItem): string {

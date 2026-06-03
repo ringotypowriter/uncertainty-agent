@@ -9,10 +9,10 @@ import { ContextManager } from "./context-manager.js";
 import {
   makeFinishWorkTool,
   makeSearchReferenceTool,
-  makeCalculateTool,
   runReferenceSearch,
   type FinishWorkState,
 } from "./tools/general-tools.js";
+import { makeCalculateTool } from "./tools/sympy-tools.js";
 import {
   findFirstIncompleteWorkItemIndex,
   formatWorkItemPrompt,
@@ -143,7 +143,7 @@ async function buildInitialPrompt(
   const stage = config.workflowStage;
   const workItems = getStageWorkItems(stage);
   const current = workItems[state.currentIndex];
-  const parts: string[] = stage.checkpoints?.length ? [stage.prompt.trim()] : [];
+  const parts: string[] = [];
 
   await contextManager.load();
   const ctx = contextManager.getAll() as Record<string, unknown>;
@@ -166,7 +166,7 @@ async function buildInitialPrompt(
       `### ${item.title}`,
       formatJsonBlock(ctx[item.contextField]),
     ].join("\n")).join("\n\n");
-    parts.push("---", "## 已完成 checkpoint 产物", completed);
+    parts.push("---", "## 已完成 stage 产物", completed);
   }
 
   if (current) {
@@ -356,7 +356,7 @@ async function runStageOnce(
 
   while (!killedBy && !agent.state.errorMessage && !(finishState.completed || await stageHasCompleteOutputs(config.workflowStage, contextManager)) && turnCount < MAX_TURNS) {
     logger.log(`${config.id} WARN: finishWork not called — continuing`, `${chalk.bold(config.id)} ${chalk.yellow("WARN")}: finishWork not called — continuing`);
-    await agent.prompt("继续当前工作。只有调用 finishWork 并通过 JSON schema 校验后，当前 checkpoint 或 stage 才会结束。");
+    await agent.prompt("继续当前工作。只有调用 finishWork 并通过 JSON schema 校验后，当前 stage 才会结束。");
   }
 
   clearTimeout(idleTimer);

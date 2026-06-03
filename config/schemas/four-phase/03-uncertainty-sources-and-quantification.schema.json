@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Uncertainty Sources Identification and Quantification",
+  "description": "围绕测量模型识别不确定度来源，并将可用来源量化为后续合成所需的分量。",
+  "type": "object",
+  "required": [
+    "output_symbol",
+    "equation",
+    "uncertainty_components"
+  ],
+  "properties": {
+    "output_symbol": {
+      "type": "string",
+      "description": "测量结果或被测量的符号。"
+    },
+    "output_unit": {
+      "type": "string",
+      "description": "输出量单位。"
+    },
+    "equation": {
+      "type": "string",
+      "description": "用于识别来源和传播不确定度的测量模型公式。"
+    },
+    "uncertainty_components": {
+      "type": "array",
+      "description": "进入合成计算的不确定度分量；同一来源若由多个子项构成，应拆成实际参与合成的分量。",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_label",
+          "linked_quantity",
+          "standard_uncertainty",
+          "unit"
+        ],
+        "properties": {
+          "source_label": {
+            "type": "string",
+            "description": "不确定度来源名称。"
+          },
+          "linked_quantity": {
+            "type": "string",
+            "description": "该来源对应的输入量、影响量或输出量。"
+          },
+          "parent_source": {
+            "type": "string",
+            "description": "所属上级来源；没有上级时省略。"
+          },
+          "evaluation_method": {
+            "type": "string",
+            "enum": [
+              "Type_A",
+              "Type_B",
+              "Regression",
+              "Validation_Data",
+              "Theoretical_Model",
+              "Expert_Judgement"
+            ],
+            "description": "该来源采用的量化方式。"
+          },
+          "input_basis": {
+            "type": "string",
+            "description": "用于量化的原始依据摘要，如标准偏差、证书限值、回归参数或验证数据。"
+          },
+          "distribution": {
+            "type": "string",
+            "description": "采用的概率分布；不适用时省略。"
+          },
+          "divisor": {
+            "type": "number",
+            "description": "由限值转换为标准不确定度时使用的除数；不适用时省略。"
+          },
+          "standard_uncertainty": {
+            "type": "number",
+            "description": "标准不确定度 u(xi)。"
+          },
+          "unit": {
+            "type": "string",
+            "description": "标准不确定度单位；无量纲时写 1。"
+          },
+          "sensitivity_coefficient": {
+            "type": "number",
+            "description": "灵敏度系数；尚未传播时可省略。"
+          },
+          "contribution_to_output": {
+            "type": "number",
+            "description": "对输出量的标准不确定度贡献；尚未传播时可省略。"
+          },
+          "output_unit": {
+            "type": "string",
+            "description": "贡献值单位；尚未传播时可省略。"
+          }
+        }
+      }
+    },
+    "excluded_sources": {
+      "type": "array",
+      "description": "识别到但未进入合成的来源及原因。",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_label",
+          "reason"
+        ],
+        "properties": {
+          "source_label": {
+            "type": "string"
+          },
+          "linked_quantity": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "未纳入合成的原因，如已由整体验证数据覆盖、影响可忽略或缺少数据。"
+          }
+        }
+      }
+    }
+  }
+}

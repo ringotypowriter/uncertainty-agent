@@ -1,0 +1,137 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Uncertainty Synthesis, Expansion and Report Generation",
+  "description": "依据量化分量完成合成、扩展，并生成评定报告所需的结果表达。",
+  "type": "object",
+  "required": [
+    "measured_result",
+    "uncertainty_budget",
+    "synthesis_result",
+    "report_statement"
+  ],
+  "properties": {
+    "measured_result": {
+      "type": "object",
+      "required": [
+        "output_symbol",
+        "value",
+        "unit"
+      ],
+      "properties": {
+        "output_symbol": {
+          "type": "string",
+          "description": "测量结果或被测量符号。"
+        },
+        "value": {
+          "type": "number",
+          "description": "测量结果估计值。"
+        },
+        "unit": {
+          "type": "string",
+          "description": "结果单位。"
+        },
+        "equation": {
+          "type": "string",
+          "description": "用于计算结果的测量模型公式。"
+        }
+      }
+    },
+    "uncertainty_budget": {
+      "type": "array",
+      "description": "用于合成计算和报告展示的不确定度预算表。",
+      "items": {
+        "type": "object",
+        "required": [
+          "source_label",
+          "standard_uncertainty",
+          "contribution_to_output"
+        ],
+        "properties": {
+          "source_label": {
+            "type": "string",
+            "description": "不确定度来源名称。"
+          },
+          "linked_quantity": {
+            "type": "string",
+            "description": "关联输入量或影响量。"
+          },
+          "value": {
+            "type": "number",
+            "description": "输入量估计值；不适用时省略。"
+          },
+          "standard_uncertainty": {
+            "type": "number",
+            "description": "标准不确定度 u(xi)。"
+          },
+          "sensitivity_coefficient": {
+            "type": "number",
+            "description": "灵敏度系数。"
+          },
+          "contribution_to_output": {
+            "type": "number",
+            "description": "对输出量的标准不确定度贡献。"
+          },
+          "relative_contribution_percent": {
+            "type": "number",
+            "description": "对合成标准不确定度的贡献率。"
+          },
+          "unit": {
+            "type": "string",
+            "description": "分量单位。"
+          }
+        }
+      }
+    },
+    "synthesis_result": {
+      "type": "object",
+      "required": [
+        "combined_standard_uncertainty",
+        "coverage_factor",
+        "expanded_uncertainty"
+      ],
+      "properties": {
+        "combined_standard_uncertainty": {
+          "type": "number",
+          "description": "合成标准不确定度 uc。"
+        },
+        "relative_combined_standard_uncertainty": {
+          "type": "number",
+          "description": "相对合成标准不确定度。"
+        },
+        "effective_degrees_of_freedom": {
+          "type": "number",
+          "description": "有效自由度；需要计算包含因子时提供。"
+        },
+        "coverage_factor": {
+          "type": "number",
+          "description": "包含因子 k。"
+        },
+        "expanded_uncertainty": {
+          "type": "number",
+          "description": "扩展不确定度 U。"
+        },
+        "confidence_level": {
+          "type": "string",
+          "description": "对应置信水平或包含概率。"
+        }
+      }
+    },
+    "report_statement": {
+      "type": "object",
+      "required": [
+        "formatted_result",
+        "standard_text"
+      ],
+      "properties": {
+        "formatted_result": {
+          "type": "string",
+          "description": "带扩展不确定度的结果表达。"
+        },
+        "standard_text": {
+          "type": "string",
+          "description": "报告中使用的完整不确定度说明。"
+        }
+      }
+    }
+  }
+}

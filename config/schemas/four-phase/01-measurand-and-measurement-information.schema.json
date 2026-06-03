@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Measurand and Measurement Information",
+  "description": "根据输入材料判断本次评定的被测量，并保留建立测量模型所需的测量信息。",
+  "type": "object",
+  "required": [
+    "measurand",
+    "quantity_kind",
+    "matrix",
+    "calculation_basis"
+  ],
+  "properties": {
+    "measurand": {
+      "type": "string",
+      "description": "被测量的完整陈述，例如某样品中某组分的质量分数。"
+    },
+    "quantity_kind": {
+      "type": "string",
+      "description": "量的种类，如浓度、质量分数、pH 值。"
+    },
+    "analyte": {
+      "type": "string",
+      "description": "被测对象中的目标组分或目标性质。"
+    },
+    "matrix": {
+      "type": "string",
+      "description": "承载被测量的样品、材料或对象。"
+    },
+    "calculation_basis": {
+      "type": "string",
+      "description": "结果计算和报告的基础，如干重、湿重、提取液体积或单次测定。"
+    },
+    "report_unit": {
+      "type": "string",
+      "description": "预期报告单位。"
+    },
+    "method_reference": {
+      "type": "string",
+      "description": "采用的标准、SOP 或方法依据。"
+    },
+    "method_nature": {
+      "type": "string",
+      "enum": [
+        "Rational",
+        "Empirical"
+      ],
+      "description": "被测量是否由具体测量程序定义。"
+    },
+    "model_relevant_information": {
+      "type": "array",
+      "description": "建立测量模型必须使用的测量信息，如称量值、体积、稀释倍数、纯度、回收率、校准关系。",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "信息名称。"
+          },
+          "value": {
+            "type": [
+              "number",
+              "string"
+            ],
+            "description": "信息取值；无法数值化时保留原文。"
+          },
+          "unit": {
+            "type": "string",
+            "description": "单位；无量纲时写 1。"
+          },
+          "source": {
+            "type": "string",
+            "description": "该信息在输入材料中的出处。"
+          }
+        }
+      }
+    }
+  }
+}

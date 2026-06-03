@@ -16,12 +16,10 @@ export interface StageConfig {
 
 export interface UncertaintyContext {
   [field: string]: any;
-  stage1_measurand?: any;
-  stage2_measurement_model?: any;
-  stage3_uncertainty_sources?: any;
-  stage4_quantification?: any;
-  stage5_synthesis_expanded?: any;
-  stage6_report_artifacts?: any;
+  measurand_specification?: any;
+  measurement_model?: any;
+  uncertainty_components?: any;
+  synthesis_and_reporting?: any;
 }
 
 export interface PipelineContext {

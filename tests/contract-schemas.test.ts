@@ -52,23 +52,39 @@ function payloadForSchema(schema: any, root = schema): Record<string, unknown> {
   return Object.fromEntries(required.map((field: string) => [field, sampleValue(properties[field], root)]));
 }
 
+async function exists(filePath: string): Promise<boolean> {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 describe("workflow topology", () => {
-  test("defines the expected SubAgent chain", async () => {
+  test("defines the expected four-step SubAgent chain", async () => {
     const workflow = await loadWorkflowConfig(process.cwd());
-    expect(workflow.stages.map((stage) => stage.id)).toEqual(["stage-123", "stage-4", "stage-5", "stage-6"]);
-    expect(workflow.stages[0].paperContext).toBe(true);
-    expect(workflow.stages[0].systemPrompt).toContain("输入材料为描述化学测量实验的文本");
-    expect(workflow.stages[1].systemPrompt).toContain("输入为 checkpoint 3");
-    expect(workflow.stages[2].systemPrompt).toContain("输入为 stage-4");
-    expect(workflow.stages[3].systemPrompt).toContain("输入为 stage-5");
-    expect(getStageWorkItems(workflow.stages[0]).map((item) => item.contextField)).toEqual([
-      "stage1_measurand",
-      "stage2_measurement_model",
-      "stage3_uncertainty_sources",
+    expect(workflow.stages.map((stage) => stage.id)).toEqual([
+      "measurand-specification",
+      "measurement-model",
+      "uncertainty-components",
+      "synthesis-and-reporting",
     ]);
-    expect(workflow.stages[1].inputContextField).toBe("stage3_uncertainty_sources");
-    expect(workflow.stages[2].inputContextField).toBe("stage4_quantification");
-    expect(workflow.stages[3].inputContextField).toBe("stage5_synthesis_expanded");
+    expect(workflow.stages[0].paperContext).toBe(true);
+    expect(workflow.stages[1].inputContextField).toBe("measurand_specification");
+    expect(workflow.stages[2].inputContextField).toBe("measurement_model");
+    expect(workflow.stages[3].inputContextField).toBe("uncertainty_components");
+    expect(workflow.stages.map((stage) => getStageWorkItems(stage)[0].contextField)).toEqual([
+      "measurand_specification",
+      "measurement_model",
+      "uncertainty_components",
+      "synthesis_and_reporting",
+    ]);
+    for (const stage of workflow.stages) {
+      const item = getStageWorkItems(stage)[0];
+      expect(item.id).toBe(stage.id);
+      expect(item.schemaPath).toContain("config/schemas/four-phase/");
+    }
   });
 });
 
@@ -91,7 +107,7 @@ describe("schema diagnostics", () => {
       },
       oneOf: [{ $ref: "#/definitions/a" }, { $ref: "#/definitions/b" }],
     };
-    const result = validateStageOutput("stage-4", { kind: "C", value: "bad" }, {}, { schema });
+    const result = validateStageOutput("sample-stage", { kind: "C", value: "bad" }, {}, { schema });
     expect(result.valid).toBe(false);
     expect(result.violations[0].message).toContain("oneOf");
     expect(result.violations[0].message).toContain("#/definitions/a");
@@ -163,14 +179,14 @@ describe("atomic testset pipeline", () => {
     expect(args.rerunReview).toBe(true);
   });
 
-  test("defaults to stopping before stage-6", () => {
+  test("defaults to running all four stages", () => {
     const args = parseTestsetArgs([]);
-    expect(args.endAt).toBe(3);
+    expect(args.endAt).toBe(4);
   });
 
-  test("can enable stage-6 explicitly", () => {
-    const args = parseTestsetArgs(["--with-stage6"]);
-    expect(args.endAt).toBe(4);
+  test("supports stopping before final synthesis/reporting stage", () => {
+    const args = parseTestsetArgs(["--end-at=3"]);
+    expect(args.endAt).toBe(3);
   });
 });
 
@@ -202,34 +218,29 @@ describe("configured JSON schemas", () => {
     }
   });
 
-  test("checkpoint 3 expresses repeated inputs through correlation coefficients", async () => {
-    const schema = JSON.parse(await fs.readFile("config/schemas/checkpoint-3-uncertainty-sources.schema.json", "utf-8"));
-    expect(schema.definitions.measurement_protocol.required).not.toContain("occurrence_count");
-    expect(schema.definitions.measurement_protocol.properties.occurrence_count).toBeUndefined();
-    expect(schema.definitions.composite_aggregated_node.allOf[1].properties.node_content.required).toEqual(["sub_components"]);
-    expect(schema.definitions.composite_aggregated_node.allOf[1].properties.node_content.properties.aggregation_plan).toBeUndefined();
-    expect(schema.definitions.quantification_source.properties.quantification_raw_data.required).toContain("influence_mechanism");
-    expect(schema.definitions.influence_mechanism.oneOf).toEqual([
-      { $ref: "#/definitions/single_input_quantity_mechanism" },
-      { $ref: "#/definitions/multiple_input_quantity_mechanism" },
+  test("schema directory only contains the four-step schema set", async () => {
+    const rootEntries = (await fs.readdir("config/schemas", { withFileTypes: true })).map((entry) => entry.name).sort();
+    const fourPhaseEntries = (await fs.readdir("config/schemas/four-phase", { withFileTypes: true }))
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .sort();
+    expect(rootEntries).toEqual(["four-phase"]);
+    expect(fourPhaseEntries).toEqual([
+      "01-measurand-and-measurement-information.schema.json",
+      "02-measurement-model.schema.json",
+      "03-uncertainty-sources-and-quantification.schema.json",
+      "04-synthesis-expansion-and-report.schema.json",
     ]);
-    expect(schema.definitions.single_input_quantity_mechanism.required).toEqual(["input_quantity_set"]);
-    expect(schema.definitions.multiple_input_quantity_mechanism.required).toEqual(["input_quantity_set", "correlation"]);
-    expect(schema.definitions.single_input_quantity_set.properties.count.const).toBe(1);
-    expect(schema.definitions.multiple_input_quantity_set.properties.count.minimum).toBe(2);
-    expect(schema.definitions.input_quantity_correlation.required).toEqual(["coefficient_between_distinct_inputs"]);
-    expect(schema.definitions.scalar_input_quantity).toBeUndefined();
-    expect(schema.definitions.independent_input_quantity_vector).toBeUndefined();
   });
 
-  test("final report fields belong to stage 6", async () => {
+  test("final report fields belong to the fourth stage", async () => {
     const workflow = await loadWorkflowConfig(process.cwd());
-    const stage5Schema = JSON.parse(await fs.readFile(workflow.stages[2].schemaPath!, "utf-8"));
-    const stage6Schema = JSON.parse(await fs.readFile(workflow.stages[3].schemaPath!, "utf-8"));
-    expect(stage5Schema.properties.final_statement).toBeUndefined();
-    expect(stage5Schema.required).not.toContain("final_statement");
-    expect(stage6Schema.properties.final_statement).toBeTruthy();
-    expect(stage6Schema.required).toContain("final_statement");
+    const stage3Schema = JSON.parse(await fs.readFile(workflow.stages[2].schemaPath!, "utf-8"));
+    const stage4Schema = JSON.parse(await fs.readFile(workflow.stages[3].schemaPath!, "utf-8"));
+    expect(stage3Schema.properties.final_statement).toBeUndefined();
+    expect(stage3Schema.required).not.toContain("final_statement");
+    expect(stage4Schema.properties.report_statement).toBeTruthy();
+    expect(stage4Schema.required).toContain("report_statement");
   });
 
   test("schemas reject missing required fields", async () => {
@@ -237,6 +248,6 @@ describe("configured JSON schemas", () => {
     const item = getStageWorkItems(workflow.stages[0])[0];
     const schema = JSON.parse(await fs.readFile(item.schemaPath, "utf-8"));
     const result = validateStageOutput(item.id, {}, {}, { schema });
-    expect(result.violations.map((v) => v.path)).toContain("/clear_statement");
+    expect(result.violations.map((v) => v.path)).toContain("/measurand");
   });
 });

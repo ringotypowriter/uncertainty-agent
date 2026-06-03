@@ -1,6 +1,6 @@
 import { registerBuiltInApiProviders } from "@mariozechner/pi-ai";
 import { runPipeline } from "./pipeline.js";
-import { loadPiConfig, listPiModels } from "./config/pi-config.js";
+import { loadPiConfig, listPiModels, resolveConfiguredApiKey } from "./config/pi-config.js";
 import type { Model } from "@mariozechner/pi-ai";
 import type { StageId, UncertaintyContext } from "./stages.js";
 import { getStageContextFields, getStageOrder, loadWorkflowConfig } from "./workflow-config.js";
@@ -170,20 +170,16 @@ function resolveStageSelector(value: string | undefined, workflow: WorkflowConfi
 
   if (/^\d+$/.test(raw)) {
     const parsed = parseInt(raw, 10);
-    if (parsed === 1) return { index: 1, display: stageDisplay(workflow, 1) };
-    const idIndex = workflow.stages.findIndex((stage) => stage.id === `stage-${parsed}`);
-    if (idIndex >= 0) return { index: idIndex + 1, display: workflow.stages[idIndex].id };
+    if (parsed >= 1 && parsed <= workflow.stages.length) {
+      return { index: parsed, display: stageDisplay(workflow, parsed) };
+    }
   }
 
   return { index: Number.NaN, display: raw };
 }
 
 function stageSelectorHelp(workflow: WorkflowConfig): string {
-  return workflow.stages.map((stage, i) => {
-    if (i === 0) return `1 or ${stage.id}`;
-    const match = /^stage-(\d+)$/.exec(stage.id);
-    return match ? `${match[1]} or ${stage.id}` : stage.id;
-  }).join(", ");
+  return workflow.stages.map((stage, i) => `${i + 1} or ${stage.id}`).join(", ");
 }
 
 async function main() {
@@ -324,7 +320,7 @@ async function main() {
   }
 
   const { model, apiKeyEnvVar } = await resolveModel(modelOverride);
-  const apiKey = process.env[apiKeyEnvVar];
+  const apiKey = resolveConfiguredApiKey(apiKeyEnvVar);
   if (!apiKey) throw new Error(`API key not set: ${apiKeyEnvVar}`);
 
   console.log(`[main] model: ${model.provider}/${model.id}`);

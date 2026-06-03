@@ -18,15 +18,19 @@ async function generate(): Promise<string> {
   let md = `# Contract — Uncertainty Agent\n\n`;
   md += `> 由 \`config/workflow.json\` 自动生成。重新生成：\`bun run scripts/generate-contract-md.ts\`\n\n`;
   md += `## 概述\n\n`;
-  md += `每个 SubAgent 通过 \`finishWork\` 提交 JSON。\`finishWork\` 根据配置的 JSON Schema 校验，通过后写入 \`context.json\` 并推进 checkpoint 或 stage。\n\n`;
+  md += `每个 SubAgent 通过 \`finishWork\` 提交 JSON。\`finishWork\` 根据配置的 JSON Schema 校验，通过后写入 \`context.json\` 并推进到下一个 stage。\n\n`;
 
-  md += `## SubAgent 与 checkpoint\n\n`;
+  md += `## 四步 SubAgent\n\n`;
   for (let i = 0; i < workflow.stages.length; i++) {
     const stage = workflow.stages[i];
     const inputs = stageInputs.get(stage.id) ?? [];
     md += `### ${i + 1}. ${stage.title}\n\n`;
     md += `**Stage ID：** \`${stage.id}\`\n\n`;
-    md += `**输入：** ${stage.paperContext ? "输入材料 Markdown" : inputs.length ? inputs.map((field) => `\`${field}\``).join(", ") : "无"}\n\n`;
+    const inputLabels = [
+      ...(stage.paperContext ? ["输入材料 Markdown"] : []),
+      ...inputs.map((field) => `\`${field}\``),
+    ];
+    md += `**输入：** ${inputLabels.length ? inputLabels.join(", ") : "无"}\n\n`;
     if (stage.systemPrompt) md += `**System prompt：** ${stage.systemPrompt}\n\n`;
 
     for (const item of getStageWorkItems(stage)) {

@@ -34,7 +34,7 @@ describe("JSON schema contract", () => {
 
 describe("invariant hook", () => {
   test("returns empty results when no invariant checks are configured", () => {
-    expect(checkInvariants("stage-4", {}, {})).toEqual({ errors: [], warnings: [] });
+    expect(checkInvariants("uncertainty-components", {}, {})).toEqual({ errors: [], warnings: [] });
   });
 });
 
